@@ -1,0 +1,28 @@
+name: quickbill_agentes
+description: "QuickBill Agentes"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.5.1
+  go_router: ^14.2.7
+  flutter_secure_storage: ^9.2.2
+  flutter_inappwebview: ^6.1.0
+  window_manager: ^0.4.0
+  google_fonts: ^6.2.1
+  equatable: ^2.0.5
+  win32: ^5.5.3
+  ffi: ^2.1.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

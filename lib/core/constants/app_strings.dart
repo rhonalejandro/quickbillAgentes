@@ -33,6 +33,8 @@ abstract final class AppStrings {
   // Settings menu
   static const settingsReconfigure = 'Reconfigurar servidor';
   static const settingsConfigurePrinter = 'Configurar impresora';
+  static const settingsExitFullScreen = 'Salir de pantalla completa';
+  static const settingsEnterFullScreen = 'Entrar a pantalla completa';
 
   // Printer setup
   static const printerSetupTitle = 'Configurar impresora';

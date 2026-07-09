@@ -31,14 +31,14 @@ La app también integra soporte para impresión local desde el WebView mediante 
 | Routing | `go_router` | `^14.2.7` |
 | Almacenamiento seguro | `flutter_secure_storage` | `^9.2.2` — host, token, config impresora |
 | WebView | `flutter_inappwebview` | `^6.1.0` — carga del módulo de agentes |
-| Ventana | `window_manager` | `^0.4.0` — fullscreen al iniciar, toggle F11 |
+| Ventana | `window_manager` | `^0.4.0` — maximizada al iniciar, toggle F11 |
 | Fuentes | `google_fonts` | `^6.2.1` — Inter |
 | Igualdad | `equatable` | `^2.0.5` — entidades de dominio |
 | Win32 nativo | `win32` | `^5.5.3` — impresión USB Windows |
 | FFI | `ffi` | `^2.1.3` — alloc de memoria nativa para impresión |
 | Lints | `flutter_lints` | `^6.0.0` |
 
-**Plataforma principal:** Windows desktop. Aunque el proyecto tiene carpetas de Android, iOS, macOS, Linux y web, el código actual utiliza APIs específicas de Windows (`win32`, PowerShell para descubrimiento de impresoras, `window_manager` en fullscreen).
+**Plataforma principal:** Windows desktop. Aunque el proyecto tiene carpetas de Android, iOS, macOS, Linux y web, el código actual utiliza APIs específicas de Windows (`win32`, PowerShell para descubrimiento de impresoras, `window_manager`).
 
 ---
 
@@ -46,7 +46,7 @@ La app también integra soporte para impresión local desde el WebView mediante 
 
 ```
 lib/
-├── main.dart                          # Punto de entrada. Inicializa window_manager en fullscreen.
+├── main.dart                          # Punto de entrada. Inicializa window_manager maximizado.
 ├── app.dart                           # MaterialApp.router + theme
 ├── routes/
 │   └── app_router.dart                # GoRouter: splash → setup → pos → printer-setup
@@ -121,8 +121,9 @@ lib/
 2. **Setup** (`/setup`) — Formulario con host. Valida, guarda en `SecureStorage`, navega a `/pos`.
 3. **POS Viewer** (`/pos`) — Carga `InAppWebView` con la URL construida desde `ServerConfig.agentUrl`.
    - Si HTTP error o network error → muestra `AgentErrorWidget`.
-   - Botón superior de ajustes (icono settings) abre diálogo para reconfigurar servidor o configurar impresora.
+   - Botón superior de ajustes (icono settings) abre diálogo para reconfigurar servidor, configurar impresora o alternar pantalla completa.
    - Handler JS `toggleFullScreen` invocado desde F11.
+   - Handler JS `exitFullScreen` invocado desde la tecla `Escape`.
    - Handler JS `print` recibe base64, decodifica y envía a `PrinterService`.
 4. **Printer Setup** (`/printer-setup`) — Permite elegir entre impresora de red (IP + puerto) o USB Windows (dropdown de impresoras del sistema). Guarda config en `SecureStorage`.
 
@@ -168,7 +169,7 @@ flutter test
 
 - `win32` + `ffi`: Impresión directa a impresoras USB Windows vía spooler (`OpenPrinter`, `StartDocPrinter`, `WritePrinter`).
 - PowerShell: Descubrimiento de impresoras instaladas (`Get-Printer`). Esto significa que la app depende de que PowerShell esté disponible y sin restricciones de ejecución de scripts en el entorno destino.
-- `window_manager`: Control de ventana fullscreen. La app inicia en pantalla completa y F11 alterna el modo.
+- `window_manager`: Control de ventana. La app inicia maximizada con la barra nativa de Windows visible (minimizar, maximizar, mover). F11 alterna el modo pantalla completa y `Escape` sale del modo pantalla completa. Desde el diálogo de ajustes también se puede entrar/salir de pantalla completa.
 
 ---
 

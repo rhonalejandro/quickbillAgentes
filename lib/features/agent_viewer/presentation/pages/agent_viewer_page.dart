@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as dev;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -41,17 +42,24 @@ class _AgentViewerPageState extends ConsumerState<AgentViewerPage> {
 
   Future<void> _toggleFullScreen() async {
     final isFullScreen = await windowManager.isFullScreen();
+    dev.log('[window] toggle fullscreen from $isFullScreen');
     await windowManager.setFullScreen(!isFullScreen);
+    dev.log('[window] fullscreen toggled to ${!isFullScreen}');
   }
 
   Future<void> _reconfigure() async {
     if (mounted) context.go(AppRoutes.setup);
   }
 
-  void _openSettings() {
-    showDialog(
+  Future<void> _openSettings() async {
+    final isFullScreen = await windowManager.isFullScreen();
+    dev.log('[window] opening settings, fullscreen=$isFullScreen');
+    if (!mounted) return;
+
+    await showDialog(
       context: context,
       builder: (_) => _SettingsDialog(
+        isFullScreen: isFullScreen,
         onReconfigure: () {
           Navigator.pop(context);
           _reconfigure();
@@ -60,19 +68,40 @@ class _AgentViewerPageState extends ConsumerState<AgentViewerPage> {
           Navigator.pop(context);
           context.push(AppRoutes.printerSetup);
         },
+        onToggleFullScreen: () {
+          Navigator.pop(context);
+          _toggleFullScreen();
+        },
       ),
     );
   }
 
   void _onWebViewCreated(InAppWebViewController controller) {
+    dev.log('[webview] created, handlers registering');
     controller.addJavaScriptHandler(
       handlerName: 'toggleFullScreen',
-      callback: (_) => _toggleFullScreen(),
+      callback: (_) {
+        dev.log('[webview] toggleFullScreen handler called');
+        return _toggleFullScreen();
+      },
+    );
+    controller.addJavaScriptHandler(
+      handlerName: 'exitFullScreen',
+      callback: (_) async {
+        dev.log('[webview] exitFullScreen handler called');
+        final isFullScreen = await windowManager.isFullScreen();
+        dev.log('[webview] current fullscreen=$isFullScreen');
+        if (isFullScreen) {
+          await windowManager.setFullScreen(false);
+          dev.log('[webview] setFullScreen(false) completed');
+        }
+      },
     );
     controller.addJavaScriptHandler(
       handlerName: 'print',
       callback: (args) => _handlePrint(args),
     );
+    dev.log('[webview] handlers registered');
   }
 
   Future<void> _handlePrint(List<dynamic> args) async {
@@ -123,15 +152,23 @@ class _AgentViewerPageState extends ConsumerState<AgentViewerPage> {
   }
 
   Future<void> _injectShortcutBridge(InAppWebViewController controller) async {
+    dev.log('[webview] injecting shortcut bridge');
     await controller.evaluateJavascript(source: '''
       (function() {
         if (window.__agentesBridgeInjected) return;
         window.__agentesBridgeInjected = true;
 
         document.addEventListener('keydown', function(e) {
+          console.log('[webview] keydown ' + e.key);
           if (e.key === 'F11') {
             e.preventDefault();
+            console.log('[webview] F11 -> toggleFullScreen');
             window.flutter_inappwebview.callHandler('toggleFullScreen');
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            console.log('[webview] Escape -> exitFullScreen');
+            window.flutter_inappwebview.callHandler('exitFullScreen');
           }
         }, true);
 
@@ -200,8 +237,10 @@ class _AgentViewerPageState extends ConsumerState<AgentViewerPage> {
             onLoadStart: (c, url) =>
                 ref.read(agentViewerProvider.notifier).onPageStarted(),
             onLoadStop: (c, url) async {
+              dev.log('[webview] page loaded: $url');
               ref.read(agentViewerProvider.notifier).onPageFinished();
               await _injectShortcutBridge(c);
+              dev.log('[webview] bridge injected');
             },
             onReceivedHttpError: (c, request, errorResponse) =>
                 ref.read(agentViewerProvider.notifier).onHttpError(errorResponse.statusCode),
@@ -242,12 +281,16 @@ class _AgentViewerPageState extends ConsumerState<AgentViewerPage> {
 
 class _SettingsDialog extends StatelessWidget {
   const _SettingsDialog({
+    required this.isFullScreen,
     required this.onReconfigure,
     required this.onConfigurePrinter,
+    required this.onToggleFullScreen,
   });
 
+  final bool isFullScreen;
   final VoidCallback onReconfigure;
   final VoidCallback onConfigurePrinter;
+  final VoidCallback onToggleFullScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -283,6 +326,16 @@ class _SettingsDialog extends StatelessWidget {
                 icon: Icons.print_rounded,
                 label: AppStrings.settingsConfigurePrinter,
                 onTap: onConfigurePrinter,
+              ),
+              const SizedBox(height: AppDimensions.sm),
+              _SettingsTile(
+                icon: isFullScreen
+                    ? Icons.fullscreen_exit_rounded
+                    : Icons.fullscreen_rounded,
+                label: isFullScreen
+                    ? AppStrings.settingsExitFullScreen
+                    : AppStrings.settingsEnterFullScreen,
+                onTap: onToggleFullScreen,
               ),
               const SizedBox(height: AppDimensions.md),
               TextButton(
